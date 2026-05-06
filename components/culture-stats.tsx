@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Culture, Depense, Recette } from '@/lib/types'
-import { Sprout, TrendingDown, TrendingUp, Eye } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -10,7 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Culture, Depense, Recette } from '@/lib/types'
+import { Sprout, TrendingDown, TrendingUp } from 'lucide-react'
 
 interface CultureStatsProps {
   cultures: Culture[]
@@ -48,26 +47,43 @@ export function CultureStats({ cultures, depenses, recettes }: CultureStatsProps
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-medium text-muted-foreground">Résumé par culture</h2>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Par culture */}
+      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
         {cultureStats.map(({ culture, totalDeps, totalRecs, solde }) => (
           <Dialog key={culture.id}>
             <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex h-auto flex-col items-center gap-2 rounded-2xl border-border bg-card p-4 shadow-sm hover:border-[#2d4a2d]/30 hover:bg-[#2d4a2d]/5 transition-all"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2d4a2d]/10">
-                  <Sprout className="h-5 w-5 text-[#2d4a2d]" />
+              <button className="flex min-w-[160px] flex-col gap-3 rounded-2xl bg-[#0d0d0d] p-4 text-white shadow-md transition-all active:scale-95 hover:bg-[#1a1a1a]">
+                {/* Top row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+                    <Sprout className="h-4 w-4 text-white" />
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${solde >= 0 ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}`}>
+                    {solde >= 0 ? 'Bénéfice' : 'Déficit'}
+                  </span>
                 </div>
-                <div className="text-center w-full">
-                  <p className="font-semibold text-foreground truncate">{culture.nom}</p>
-                  <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground mt-1">
-                    <Eye className="h-3 w-3" />
-                    <span>Visualiser</span>
+                {/* Culture name */}
+                <div>
+                  <p className="text-sm font-bold leading-tight truncate">{culture.nom}</p>
+                  {culture.variete && (
+                    <p className="text-[11px] text-white/50 truncate">{culture.variete}</p>
+                  )}
+                </div>
+                {/* Solde */}
+                <p className={`text-base font-bold ${solde >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {solde >= 0 ? '+' : ''}{new Intl.NumberFormat('fr-FR').format(solde)} F
+                </p>
+                {/* Dépenses / Recettes */}
+                <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                  <div className="flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-red-400" />
+                    <span className="text-[10px] text-white/60">{new Intl.NumberFormat('fr-FR').format(totalDeps)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-green-400" />
+                    <span className="text-[10px] text-white/60">{new Intl.NumberFormat('fr-FR').format(totalRecs)}</span>
                   </div>
                 </div>
-              </Button>
+              </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-2xl">
               <DialogHeader>
@@ -78,7 +94,7 @@ export function CultureStats({ cultures, depenses, recettes }: CultureStatsProps
                   <span>Détails {culture.nom}</span>
                 </DialogTitle>
               </DialogHeader>
-              
+
               <div className="flex flex-col gap-4 py-4">
                 <div className="flex flex-col items-center justify-center rounded-2xl bg-muted/50 p-4 border border-border">
                   <p className="text-sm text-muted-foreground mb-1">Bénéfice net</p>

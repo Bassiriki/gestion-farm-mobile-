@@ -1,24 +1,24 @@
 'use client'
 
-import { useCallback, useState, useEffect } from 'react'
-import useSWR from 'swr'
-import { createClient } from '@/lib/supabase/client'
-import { SummaryCards } from '@/components/summary-cards'
+import { CultureForm } from '@/components/culture-form'
 import { CultureStats } from '@/components/culture-stats'
 import { DepenseForm } from '@/components/depense-form'
-import { RecetteForm } from '@/components/recette-form'
-import { TransactionsList } from '@/components/transactions-list'
 import { ProductionCards } from '@/components/production-cards'
-import { CultureForm } from '@/components/culture-form'
-import { Depense, Recette, Culture } from '@/lib/types'
-import Image from 'next/image'
-import { Home, History, TrendingDown, TrendingUp, ArrowLeft, Printer, X, LayoutGrid, Plus, Activity, Sun, Moon } from 'lucide-react'
+import { RecetteForm } from '@/components/recette-form'
+import { SummaryCards } from '@/components/summary-cards'
+import { TransactionsList } from '@/components/transactions-list'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import { Culture, Depense, Recette } from '@/lib/types'
+import { Activity, ArrowLeft, Home, LayoutGrid, Moon, Plus, Printer, Sun, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import Image from 'next/image'
+import { useCallback, useEffect, useState } from 'react'
+import useSWR from 'swr'
 
 async function fetchData() {
   const supabase = createClient()
-  
+
   const [depensesRes, recettesRes] = await Promise.all([
     supabase.from('depenses').select('*').order('created_at', { ascending: false }),
     supabase.from('recettes').select('*').order('created_at', { ascending: false })
@@ -32,15 +32,13 @@ async function fetchData() {
 
 type TabType = 'accueil' | 'historique' | 'depense' | 'recette' | 'parametres' | 'add_culture'
 
-const ACCESS_CODE = '1965'
+
 
 export default function FarmManganePage() {
   const [activeTab, setActiveTab] = useState<TabType>('accueil')
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [isUnlocked, setIsUnlocked] = useState(false)
-  const [code, setCode] = useState('')
-  const [codeError, setCodeError] = useState(false)
+  const [isUnlocked] = useState(true)
   const [transactionToEdit, setTransactionToEdit] = useState<any>(null)
   const { theme, setTheme } = useTheme()
   const [cultures, setCultures] = useState<Culture[]>([])
@@ -59,27 +57,6 @@ export default function FarmManganePage() {
     mutate()
   }, [mutate])
 
-  const handleCodeInput = (digit: string) => {
-    if (code.length < 4) {
-      const newCode = code + digit
-      setCode(newCode)
-      setCodeError(false)
-      if (newCode.length === 4) {
-        if (newCode === ACCESS_CODE) {
-          setIsUnlocked(true)
-          setCodeError(false)
-        } else {
-          setCodeError(true)
-          setTimeout(() => setCode(''), 300)
-        }
-      }
-    }
-  }
-
-  const handleCodeDelete = () => {
-    setCode(code.slice(0, -1))
-    setCodeError(false)
-  }
 
   const handleSuccess = useCallback(() => {
     mutate()
@@ -156,9 +133,13 @@ export default function FarmManganePage() {
           th { background: #2d4a2d; color: white; font-size: 12px; }
           td { font-size: 12px; }
           .amount-cell { text-align: right; font-weight: 600; }
+          .back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; padding: 10px 20px; background: #2d4a2d; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+          .back-btn:hover { background: #3d5a3d; }
+          @media print { .back-btn { display: none; } }
         </style>
       </head>
       <body>
+        <button class="back-btn" onclick="window.close()">&#8592; Retour à l'application</button>
         <div class="header">
           <div class="title">FARM MANGANE</div>
           <div>Rapport Mensuel</div>
@@ -201,64 +182,11 @@ export default function FarmManganePage() {
     setShowPrintDialog(false)
   }
 
-  if (!isUnlocked) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-[#2d4a2d] px-6">
-        <div className="flex w-full max-w-sm flex-col items-center gap-8">
-          <div className="flex flex-col items-center gap-4">
-            <Image 
-              src="/images/logo.png" 
-              alt="Farm Mangane" 
-              width={120} 
-              height={120}
-              className="rounded-2xl shadow-lg"
-            />
-            <h1 className="text-2xl font-bold text-white">Farm Mangane</h1>
-            <p className="text-sm text-white/70">Entrez le code d'accès</p>
-          </div>
-          <div className="flex gap-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`h-4 w-4 rounded-full transition-all ${
-                  code.length > i 
-                    ? codeError ? 'bg-red-400 animate-pulse' : 'bg-white' 
-                    : 'bg-white/30'
-                }`}
-              />
-            ))}
-          </div>
-          {codeError && <p className="text-sm text-red-300">Code incorrect, réessayez</p>}
-          <div className="grid grid-cols-3 gap-4">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((digit, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  if (digit === 'del') handleCodeDelete()
-                  else if (digit) handleCodeInput(digit)
-                }}
-                disabled={digit === ''}
-                className={`flex h-16 w-16 items-center justify-center rounded-full text-xl font-semibold transition-all ${
-                  digit === '' 
-                    ? 'cursor-default' 
-                    : digit === 'del'
-                    ? 'bg-white/10 text-white hover:bg-white/20'
-                    : 'bg-white/20 text-white hover:bg-white/30 active:scale-95'
-                }`}
-              >
-                {digit === 'del' ? <ArrowLeft className="h-6 w-6" /> : digit}
-              </button>
-            ))}
-          </div>
-        </div>
-      </main>
-    )
-  }
 
   const FormHeader = ({ title, onBack }: { title: string; onBack: () => void }) => (
-    <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-3 shadow-sm">
+    <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm">
       <div className="mx-auto flex max-w-lg items-center gap-3">
-        <button 
+        <button
           onClick={onBack}
           className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted"
         >
@@ -275,7 +203,7 @@ export default function FarmManganePage() {
         <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Imprimer le rapport</h2>
-            <button 
+            <button
               onClick={() => setShowPrintDialog(false)}
               className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
             >
@@ -288,14 +216,14 @@ export default function FarmManganePage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="flex-1 h-12 rounded-xl"
               onClick={() => setShowPrintDialog(false)}
             >
               Annuler
             </Button>
-            <Button 
+            <Button
               className="flex-1 h-12 rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
               onClick={handlePrintPDF}
             >
@@ -346,30 +274,30 @@ export default function FarmManganePage() {
       {showPrintDialog && <PrintDialog />}
 
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm">
         <div className="mx-auto flex max-w-lg items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image 
-              src="/images/logo.png" 
-              alt="Farm Mangane Logo" 
-              width={44} 
-              height={44} 
-              className="rounded-lg object-cover"
+            <Image
+              src="/images/logo.png"
+              alt="Farm Mangane Logo"
+              width={56}
+              height={56}
+              className="rounded-xl object-cover"
             />
             <div>
-              <h1 className="text-lg font-bold text-foreground">Farm Mangane</h1>
-              <p className="text-xs text-muted-foreground">Gestion Agricole</p>
+              <h1 className="text-xl font-bold text-foreground">Farm Mangane</h1>
+              <p className="text-sm text-muted-foreground">Gestion Agricole</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               <Sun className="h-5 w-5 hidden dark:block" />
               <Moon className="h-5 w-5 block dark:hidden" />
             </button>
-            <button 
+            <button
               onClick={() => setShowPrintDialog(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
@@ -384,24 +312,24 @@ export default function FarmManganePage() {
         {activeTab === 'accueil' && (
           <div className="flex flex-col gap-6">
             <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} />
-            
+
             <CultureStats cultures={cultures} depenses={data?.depenses || []} recettes={data?.recettes || []} />
-            
+
             <ProductionCards onNavigateToParametres={() => setActiveTab('parametres')} />
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">Transactions récentes</h2>
-                <button 
+                <button
                   onClick={() => setActiveTab('historique')}
                   className="text-sm font-medium text-[#2d4a2d] dark:text-[#4ade80]"
                 >
                   Voir tout
                 </button>
               </div>
-              <TransactionsList 
-                depenses={data?.depenses.slice(0, 3) || []} 
-                recettes={data?.recettes.slice(0, 3) || []} 
+              <TransactionsList
+                depenses={data?.depenses.slice(0, 3) || []}
+                recettes={data?.recettes.slice(0, 3) || []}
                 onDelete={handleRefresh}
                 onEdit={handleEditTransaction}
                 compact
@@ -413,9 +341,9 @@ export default function FarmManganePage() {
         {activeTab === 'historique' && (
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-foreground">Historique complet</h2>
-            <TransactionsList 
-              depenses={data?.depenses || []} 
-              recettes={data?.recettes || []} 
+            <TransactionsList
+              depenses={data?.depenses || []}
+              recettes={data?.recettes || []}
               onDelete={handleRefresh}
               onEdit={handleEditTransaction}
             />
@@ -426,7 +354,7 @@ export default function FarmManganePage() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-foreground">Paramètres Cultures</h2>
-              <Button 
+              <Button
                 onClick={() => setActiveTab('add_culture')}
                 className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
                 size="sm"
@@ -434,7 +362,7 @@ export default function FarmManganePage() {
                 <Plus className="mr-2 h-4 w-4" /> Nouvelle
               </Button>
             </div>
-            
+
             <ProductionCards onNavigateToParametres={() => setActiveTab('add_culture')} />
           </div>
         )}
@@ -445,7 +373,7 @@ export default function FarmManganePage() {
         {/* Floating Add Menu */}
         {showAddMenu && (
           <div className="absolute bottom-20 left-1/2 flex -translate-x-1/2 flex-col gap-3 rounded-2xl bg-card p-3 shadow-xl border border-border">
-            <button 
+            <button
               onClick={() => { setActiveTab('recette'); setShowAddMenu(false); }}
               className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
             >
@@ -454,7 +382,7 @@ export default function FarmManganePage() {
               </div>
               <span className="text-sm font-medium text-foreground">Ajouter Recette</span>
             </button>
-            <button 
+            <button
               onClick={() => { setActiveTab('depense'); setShowAddMenu(false); }}
               className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
             >
@@ -465,26 +393,26 @@ export default function FarmManganePage() {
             </button>
           </div>
         )}
-        
+
         {/* Dim overlay when add menu is open */}
         {showAddMenu && (
-          <div 
-            className="fixed inset-0 -z-10 bg-black/5 dark:bg-black/50" 
+          <div
+            className="fixed inset-0 -z-10 bg-black/5 dark:bg-black/50"
             onClick={() => setShowAddMenu(false)}
           />
         )}
 
         <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
-          
-          <button 
+
+          <button
             onClick={() => { setActiveTab('accueil'); setShowAddMenu(false); }}
             className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'accueil' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
           >
             <Home className="h-[22px] w-[22px]" />
             <span className="text-[10px] font-medium">Accueil</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => { setActiveTab('historique'); setShowAddMenu(false); }}
             className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'historique' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
           >
@@ -492,30 +420,30 @@ export default function FarmManganePage() {
             <span className="text-[10px] font-medium">Historique</span>
           </button>
 
-          <button 
+          <button
             onClick={() => setShowAddMenu(!showAddMenu)}
             className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${showAddMenu ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
           >
             <Plus className="h-7 w-7 rounded-full border-[1.5px] border-current p-0.5" />
             <span className="text-[10px] font-medium">Ajouter</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => { setActiveTab('parametres'); setShowAddMenu(false); }}
             className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'parametres' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
           >
             <LayoutGrid className="h-[22px] w-[22px]" />
             <span className="text-[10px] font-medium">Cultures</span>
           </button>
-          
-          <button 
-             onClick={() => { setShowPrintDialog(true); setShowAddMenu(false); }}
+
+          <button
+            onClick={() => { setShowPrintDialog(true); setShowAddMenu(false); }}
             className="flex flex-col items-center justify-center gap-1 w-16 transition-colors text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80"
           >
             <Printer className="h-[22px] w-[22px]" />
             <span className="text-[10px] font-medium">Rapport</span>
           </button>
-          
+
         </div>
       </nav>
     </main>
