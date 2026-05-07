@@ -19,14 +19,16 @@ import useSWR from 'swr'
 async function fetchData() {
   const supabase = createClient()
 
-  const [depensesRes, recettesRes] = await Promise.all([
+  const [depensesRes, recettesRes, culturesRes] = await Promise.all([
     supabase.from('depenses').select('*').order('created_at', { ascending: false }),
-    supabase.from('recettes').select('*').order('created_at', { ascending: false })
+    supabase.from('recettes').select('*').order('created_at', { ascending: false }),
+    supabase.from('cultures').select('*').order('created_at', { ascending: false })
   ])
 
   return {
     depenses: (depensesRes.data || []) as Depense[],
-    recettes: (recettesRes.data || []) as Recette[]
+    recettes: (recettesRes.data || []) as Recette[],
+    cultures: (culturesRes.data || []) as Culture[]
   }
 }
 
@@ -41,16 +43,8 @@ export default function FarmManganePage() {
   const [isUnlocked] = useState(true)
   const [transactionToEdit, setTransactionToEdit] = useState<any>(null)
   const { theme, setTheme } = useTheme()
-  const [cultures, setCultures] = useState<Culture[]>([])
-
-  // Load cultures
-  useEffect(() => {
-    const stored = localStorage.getItem('farm_cultures')
-    if (stored) setCultures(JSON.parse(stored))
-  }, [])
-
   const { data, mutate } = useSWR('farm-data', fetchData, {
-    fallbackData: { depenses: [], recettes: [] }
+    fallbackData: { depenses: [], recettes: [], cultures: [] }
   })
 
   const handleRefresh = useCallback(() => {
@@ -263,7 +257,7 @@ export default function FarmManganePage() {
       <main className="flex min-h-screen flex-col bg-background">
         <FormHeader title="Ajouter Culture" onBack={() => setActiveTab('parametres')} />
         <div className="mx-auto w-full max-w-lg flex-1">
-          <CultureForm onSuccess={() => setActiveTab('parametres')} onCancel={() => setActiveTab('parametres')} />
+          <CultureForm onSuccess={() => { mutate(); setActiveTab('parametres'); }} onCancel={() => setActiveTab('parametres')} />
         </div>
       </main>
     )
@@ -313,9 +307,9 @@ export default function FarmManganePage() {
           <div className="flex flex-col gap-6">
             <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} />
 
-            <CultureStats cultures={cultures} depenses={data?.depenses || []} recettes={data?.recettes || []} />
+            <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
 
-            <ProductionCards onNavigateToParametres={() => setActiveTab('parametres')} />
+            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('parametres')} />
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -363,7 +357,7 @@ export default function FarmManganePage() {
               </Button>
             </div>
 
-            <ProductionCards onNavigateToParametres={() => setActiveTab('add_culture')} />
+            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('add_culture')} />
           </div>
         )}
       </div>

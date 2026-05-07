@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Sprout, Check } from 'lucide-react'
-import { Culture } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface CultureFormProps {
   onSuccess: () => void
@@ -19,13 +19,18 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
   const [datePlantation, setDatePlantation] = useState('')
   const [dateRecoltePrevue, setDateRecoltePrevue] = useState('')
   const [statut, setStatut] = useState<'en_cours' | 'recolte'>('en_cours')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!nom) return
 
-    const newCulture: Culture = {
-      id: Math.random().toString(36).substr(2, 9),
+    setLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    const { error: supabaseError } = await supabase.from('cultures').insert({
       nom,
       variete: variete || null,
       surface: surface || null,
@@ -33,13 +38,15 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
       date_recolte_prevue: dateRecoltePrevue || null,
       statut,
       notes: null,
-      created_at: new Date().toISOString()
+    })
+
+    setLoading(false)
+
+    if (supabaseError) {
+      setError('Erreur lors de l\'enregistrement. Réessayez.')
+      return
     }
 
-    const existing = localStorage.getItem('farm_cultures')
-    const cultures = existing ? JSON.parse(existing) : []
-    localStorage.setItem('farm_cultures', JSON.stringify([newCulture, ...cultures]))
-    
     onSuccess()
   }
 
@@ -55,6 +62,12 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5 px-4 pb-6">
+        {error && (
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           <Label className="text-base font-medium text-foreground">Nom de la culture</Label>
           <Input
@@ -114,8 +127,8 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
               type="button"
               onClick={() => setStatut('en_cours')}
               className={`flex-1 rounded-xl border-2 py-3 text-sm font-semibold transition-all ${
-                statut === 'en_cours' 
-                  ? 'border-[#2d4a2d] bg-[#2d4a2d]/10 text-[#2d4a2d]' 
+                statut === 'en_cours'
+                  ? 'border-[#2d4a2d] bg-[#2d4a2d]/10 text-[#2d4a2d]'
                   : 'border-border bg-transparent text-muted-foreground'
               }`}
             >
@@ -125,8 +138,8 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
               type="button"
               onClick={() => setStatut('recolte')}
               className={`flex-1 rounded-xl border-2 py-3 text-sm font-semibold transition-all ${
-                statut === 'recolte' 
-                  ? 'border-amber-500 bg-amber-50 text-amber-700' 
+                statut === 'recolte'
+                  ? 'border-amber-500 bg-amber-50 text-amber-700'
                   : 'border-border bg-transparent text-muted-foreground'
               }`}
             >
@@ -146,11 +159,11 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
           </Button>
           <Button
             type="submit"
-            disabled={!nom}
+            disabled={!nom || loading}
             className="h-14 flex-1 rounded-xl bg-[#2d4a2d] text-base font-semibold text-white hover:bg-[#3d5a3d]"
           >
             <Check className="mr-2 h-5 w-5" />
-            Enregistrer
+            {loading ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
         </div>
       </form>

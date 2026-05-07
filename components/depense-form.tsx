@@ -25,9 +25,11 @@ export function DepenseForm({ onSuccess, fullScreen = false, initialData }: Depe
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Load cultures from localStorage
-    const stored = localStorage.getItem('farm_cultures')
-    if (stored) setCultures(JSON.parse(stored))
+    // Charger les cultures depuis Supabase
+    const supabase = createClient()
+    supabase.from('cultures').select('*').order('nom').then(({ data }) => {
+      if (data) setCultures(data)
+    })
   }, [])
 
   useEffect(() => {

@@ -26,8 +26,11 @@ export function RecetteForm({ onSuccess, fullScreen = false, initialData }: Rece
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('farm_cultures')
-    if (stored) setCultures(JSON.parse(stored))
+    // Charger les cultures depuis Supabase
+    const supabase = createClient()
+    supabase.from('cultures').select('*').order('nom').then(({ data }) => {
+      if (data) setCultures(data)
+    })
   }, [])
 
   useEffect(() => {
