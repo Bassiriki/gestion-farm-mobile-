@@ -1,19 +1,44 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { TrendingUp, Check, Package, Link } from 'lucide-react'
-import { Spinner } from '@/components/ui/spinner'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { UNITES_VENTE, Recette, Culture } from '@/lib/types'
+import { TrendingUp, Package, FileText, Wheat, ChevronDown, Ruler } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 
 interface RecetteFormProps {
   onSuccess: () => void
   fullScreen?: boolean
   initialData?: Recette | null
+}
+
+// ─── Composant champ Flutter-style ───────────────────────────────────────────
+function MobileField({
+  label,
+  icon,
+  children,
+  required,
+}: {
+  label: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  required?: boolean
+}) {
+  return (
+    <div className="relative flex flex-col">
+      <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 focus-within:border-[#2d4a2d] focus-within:ring-2 focus-within:ring-[#2d4a2d]/10 transition-all">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+          {icon}
+        </div>
+        <div className="flex flex-1 flex-col min-w-0">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">
+            {label}{required && <span className="text-[#2d4a2d] ml-0.5">*</span>}
+          </span>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function RecetteForm({ onSuccess, fullScreen = false, initialData }: RecetteFormProps) {
@@ -24,9 +49,9 @@ export function RecetteForm({ onSuccess, fullScreen = false, initialData }: Rece
   const [cultureId, setCultureId] = useState<string>('none')
   const [cultures, setCultures] = useState<Culture[]>([])
   const [loading, setLoading] = useState(false)
+  const [showCultures, setShowCultures] = useState(false)
 
   useEffect(() => {
-    // Charger les cultures depuis Supabase
     const supabase = createClient()
     supabase.from('cultures').select('*').order('nom').then(({ data }) => {
       if (data) setCultures(data)
@@ -58,7 +83,7 @@ export function RecetteForm({ onSuccess, fullScreen = false, initialData }: Rece
       culture_id: cultureId === 'none' ? null : cultureId,
     }
 
-    let error;
+    let error
     if (initialData) {
       const res = await supabase.from('recettes').update(data).eq('id', initialData.id)
       error = res.error
@@ -78,130 +103,159 @@ export function RecetteForm({ onSuccess, fullScreen = false, initialData }: Rece
     setLoading(false)
   }
 
-  const CultureSelect = ({ className }: { className?: string }) => (
-    <div className="flex flex-col gap-2">
-      <Label className={`flex items-center gap-2 ${fullScreen ? 'text-base font-medium text-foreground' : 'text-sm text-muted-foreground'}`}>
-        <Link className="h-4 w-4 text-[#2d4a2d]" />
-        Lier à une culture (optionnel)
-      </Label>
-      <Select value={cultureId} onValueChange={setCultureId}>
-        <SelectTrigger className={className}>
-          <SelectValue placeholder="Aucune culture liée" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">
-            <span className="text-muted-foreground">— Recette générale (non liée) —</span>
-          </SelectItem>
-          {cultures.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  )
+  const selectedCulture = cultures.find(c => c.id === cultureId)
 
   if (fullScreen) {
     return (
-      <div className="flex flex-1 flex-col bg-background">
-        <div className="flex flex-col items-center gap-4 py-6">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#2d4a2d]/10 dark:bg-[#2d4a2d]/20">
-            <TrendingUp className="h-10 w-10 text-[#2d4a2d]" />
+      <div className="flex flex-1 flex-col" style={{ background: '#f5f6fa' }}>
+        {/* ── En-tête ── */}
+        <div className="flex flex-col items-center gap-3 py-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2d4a2d] shadow-lg shadow-[#2d4a2d]/30">
+            <TrendingUp className="h-8 w-8 text-white" />
           </div>
-          <p className="text-center text-sm text-muted-foreground">
-            {initialData ? 'Modifier la recette' : 'Enregistrez vos ventes et recettes'}
-          </p>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-gray-800">
+              {initialData ? 'Modifier la recette' : 'Nouvelle recette'}
+            </h2>
+            <p className="text-sm text-gray-400 mt-0.5">Ventes et entrées d'argent</p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="montant-recette" className="text-base font-medium text-foreground">
-              Montant (FCFA)
-            </Label>
-            <Input
-              id="montant-recette"
-              type="number"
-              inputMode="numeric"
-              placeholder="Ex: 100000"
-              value={montant}
-              onChange={(e) => setMontant(e.target.value)}
-              className="h-14 rounded-xl border-border bg-muted/50 text-lg"
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3 px-4 pb-36">
 
-          <CultureSelect className="h-14 rounded-xl border-border bg-muted/50 text-base" />
-
-          <div className="flex flex-col gap-2">
-            <Label className="text-base font-medium text-foreground flex items-center gap-2">
-              <Package className="h-4 w-4 text-[#2d4a2d] dark:text-green-500" />
-              Quantité vendue (optionnel)
-            </Label>
-            <div className="flex gap-3">
-              <Input
-                id="quantite-recette"
+          {/* ── Montant ── */}
+          <MobileField label="Montant reçu" icon={<span className="text-base font-bold text-[#2d4a2d]">F</span>} required>
+            <div className="flex items-baseline gap-2">
+              <input
                 type="number"
                 inputMode="numeric"
-                placeholder="Ex: 10"
-                value={quantite}
-                onChange={(e) => setQuantite(e.target.value)}
-                className="h-14 rounded-xl border-border bg-muted/50 text-lg flex-1"
+                placeholder="0"
+                value={montant}
+                onChange={e => setMontant(e.target.value)}
+                required
+                className="w-full bg-transparent text-2xl font-bold text-gray-800 placeholder:text-gray-300 outline-none"
               />
-              <Select value={unite} onValueChange={setUnite}>
-                <SelectTrigger className="h-14 rounded-xl border-border bg-muted/50 text-base flex-1">
-                  <SelectValue placeholder="Unité" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNITES_VENTE.map((u) => (
-                    <SelectItem key={u} value={u} className="text-base">
-                      {u}
-                    </SelectItem>
+              <span className="text-sm font-semibold text-gray-400 shrink-0">FCFA</span>
+            </div>
+          </MobileField>
+
+          {/* ── Culture liée ── */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowCultures(!showCultures)}
+              className="w-full flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 focus:outline-none focus:border-[#2d4a2d] focus:ring-2 focus:ring-[#2d4a2d]/10 transition-all"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+                <Wheat className="h-4 w-4 text-[#2d4a2d]" />
+              </div>
+              <div className="flex flex-1 flex-col items-start min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">
+                  Culture liée
+                </span>
+                <span className={`text-base font-semibold truncate ${selectedCulture ? 'text-gray-800' : 'text-gray-300'}`}>
+                  {selectedCulture ? `🌱 ${selectedCulture.nom}${selectedCulture.variete ? ` (${selectedCulture.variete})` : ''}` : 'Aucune (général)'}
+                </span>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-gray-300 shrink-0 transition-transform ${showCultures ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showCultures && (
+              <div className="absolute z-20 left-0 right-0 mt-2 rounded-2xl bg-white border border-gray-100 shadow-xl overflow-hidden">
+                <div className="max-h-48 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setCultureId('none'); setShowCultures(false) }}
+                    className={`w-full flex items-center px-4 py-3.5 text-left text-sm font-medium transition-colors
+                      ${cultureId === 'none' ? 'bg-[#2d4a2d]/5 text-[#2d4a2d]' : 'text-gray-400 hover:bg-gray-50'}`}
+                  >
+                    {cultureId === 'none' && <span className="mr-2">✓</span>}
+                    — Recette générale —
+                  </button>
+                  {cultures.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setCultureId(c.id); setShowCultures(false) }}
+                      className={`w-full flex items-center px-4 py-3.5 text-left text-sm font-medium transition-colors
+                        ${cultureId === c.id ? 'bg-[#2d4a2d]/5 text-[#2d4a2d]' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {cultureId === c.id && <span className="mr-2">✓</span>}
+                      🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''}
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Quantité + Unité ── */}
+          <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 focus-within:border-[#2d4a2d] focus-within:ring-2 focus-within:ring-[#2d4a2d]/10 transition-all">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+              <Package className="h-4 w-4 text-[#2d4a2d]" />
+            </div>
+            <div className="flex flex-1 flex-col min-w-0">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Quantité vendue (optionnel)</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={quantite}
+                  onChange={e => setQuantite(e.target.value)}
+                  className="w-24 bg-transparent text-lg font-bold text-gray-800 placeholder:text-gray-300 outline-none"
+                />
+                <div className="flex items-center gap-1 border-l border-gray-100 pl-3">
+                  <Ruler className="h-3.5 w-3.5 text-gray-300" />
+                  <select
+                    value={unite}
+                    onChange={e => setUnite(e.target.value)}
+                    className="bg-transparent text-sm font-semibold text-gray-600 outline-none appearance-none"
+                  >
+                    {UNITES_VENTE.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="description-recette" className="text-base font-medium text-foreground">
-              Description (optionnel)
-            </Label>
-            <Input
-              id="description-recette"
+          {/* ── Description ── */}
+          <MobileField label="Description (optionnelle)" icon={<FileText className="h-4 w-4 text-gray-400" />}>
+            <input
               type="text"
-              placeholder="Ex: Vente au marché"
+              placeholder="Ex: Vente au marché central..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="h-14 rounded-xl border-border bg-muted/50 text-base"
+              onChange={e => setDescription(e.target.value)}
+              className="w-full bg-transparent text-base font-medium text-gray-800 placeholder:text-gray-300 outline-none"
             />
-          </div>
-
-          <div className="mt-auto pt-6">
-            <Button
-              type="submit"
-              disabled={loading || !montant}
-              className="h-14 w-full rounded-xl bg-[#2d4a2d] text-base font-semibold text-white hover:bg-[#3d5a3d]"
-            >
-              {loading ? (
-                <Spinner className="h-5 w-5" />
-              ) : (
-                <>
-                  <Check className="mr-2 h-5 w-5" />
-                  {initialData ? 'Enregistrer les modifications' : 'Enregistrer Recette'}
-                </>
-              )}
-            </Button>
-          </div>
+          </MobileField>
         </form>
+
+        {/* ── Bouton fixé en bas ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-10 bg-white/90 backdrop-blur-md border-t border-gray-100 p-4">
+          <button
+            type="button"
+            disabled={loading || !montant}
+            onClick={handleSubmit as any}
+            className="w-full h-14 rounded-2xl bg-[#2d4a2d] text-white text-base font-bold shadow-lg shadow-[#2d4a2d]/30
+                       disabled:opacity-40 disabled:shadow-none active:scale-[0.98] transition-all"
+          >
+            {loading ? (
+              <Spinner className="mx-auto h-6 w-6 text-white" />
+            ) : (
+              initialData ? 'Enregistrer les modifications' : 'Valider la recette →'
+            )}
+          </button>
+        </div>
       </div>
     )
   }
 
+  // ── Version compacte (carte) ──────────────────────────────────────────────
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2d4a2d]/10 dark:bg-[#2d4a2d]/20">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2d4a2d]/10">
           <TrendingUp className="h-5 w-5 text-[#2d4a2d]" />
         </div>
         <h2 className="text-lg font-semibold text-foreground">
@@ -209,70 +263,65 @@ export function RecetteForm({ onSuccess, fullScreen = false, initialData }: Rece
         </h2>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="montant-recette-c" className="text-sm text-muted-foreground">Montant (FCFA)</Label>
-          <Input
-            id="montant-recette-c"
-            type="number"
-            inputMode="numeric"
-            placeholder="Ex: 100000"
-            value={montant}
-            onChange={(e) => setMontant(e.target.value)}
-            className="h-12 rounded-xl border-border bg-muted/50"
-            required
-          />
-        </div>
-
-        <CultureSelect className="h-12 rounded-xl border-border bg-muted/50" />
-
-        <div className="flex flex-col gap-2">
-          <Label className="text-sm text-muted-foreground flex items-center gap-1">
-            <Package className="h-3 w-3" /> Quantité (optionnel)
-          </Label>
-          <div className="flex gap-2">
-            <Input
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <MobileField label="Montant" icon={<span className="text-sm font-bold text-[#2d4a2d]">F</span>} required>
+          <div className="flex items-baseline gap-2">
+            <input
               type="number"
               inputMode="numeric"
-              placeholder="Qté"
-              value={quantite}
-              onChange={(e) => setQuantite(e.target.value)}
-              className="h-12 rounded-xl border-border bg-muted/50 flex-1"
+              placeholder="0"
+              value={montant}
+              onChange={e => setMontant(e.target.value)}
+              required
+              className="w-full bg-transparent text-xl font-bold text-gray-800 placeholder:text-gray-300 outline-none"
             />
-            <Select value={unite} onValueChange={setUnite}>
-              <SelectTrigger className="h-12 rounded-xl border-border bg-muted/50 flex-1">
-                <SelectValue placeholder="Unité" />
-              </SelectTrigger>
-              <SelectContent>
-                {UNITES_VENTE.map((u) => (
-                  <SelectItem key={u} value={u}>
-                    {u}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <span className="text-xs font-semibold text-gray-400">FCFA</span>
+          </div>
+        </MobileField>
+
+        <div className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50">
+            <Package className="h-4 w-4 text-[#2d4a2d]" />
+          </div>
+          <div className="flex flex-1 flex-col min-w-0">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Quantité (optionnel)</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="0"
+                value={quantite}
+                onChange={e => setQuantite(e.target.value)}
+                className="w-16 bg-transparent text-sm font-bold text-gray-800 placeholder:text-gray-300 outline-none"
+              />
+              <select
+                value={unite}
+                onChange={e => setUnite(e.target.value)}
+                className="bg-transparent text-xs font-semibold text-gray-500 outline-none appearance-none border-l border-gray-100 pl-2"
+              >
+                {UNITES_VENTE.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="desc-recette-c" className="text-sm text-muted-foreground">Description (optionnel)</Label>
-          <Input
-            id="desc-recette-c"
+        <MobileField label="Description (optionnel)" icon={<FileText className="h-4 w-4 text-gray-400" />}>
+          <input
             type="text"
             placeholder="Ex: Vente au marché"
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="h-12 rounded-xl border-border bg-muted/50"
+            onChange={e => setDescription(e.target.value)}
+            className="w-full bg-transparent text-sm font-medium text-gray-800 placeholder:text-gray-300 outline-none"
           />
-        </div>
+        </MobileField>
 
-        <Button
+        <button
           type="submit"
           disabled={loading || !montant}
-          className="h-12 rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
+          className="h-12 rounded-2xl bg-[#2d4a2d] text-white font-bold shadow-md shadow-[#2d4a2d]/20 disabled:opacity-40 active:scale-[0.98] transition-all"
         >
-          {loading ? <Spinner className="h-4 w-4" /> : (initialData ? 'Enregistrer' : 'Ajouter')}
-        </Button>
+          {loading ? <Spinner className="mx-auto h-4 w-4" /> : (initialData ? 'Enregistrer' : 'Ajouter la recette')}
+        </button>
       </form>
     </div>
   )

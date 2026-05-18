@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { TrendingDown, TrendingUp } from 'lucide-react'
 
 interface SummaryCardsProps {
   totalDepenses: number
@@ -15,27 +15,20 @@ export function SummaryCards({ totalDepenses, totalRecettes }: SummaryCardsProps
   }
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-[#2d4a2d] to-[#1a2f1a] p-6 shadow-xl text-white">
+    <div className="rounded-md bg-gradient-to-br from-[#2d4a2d] to-[#1a2f1a] p-6 shadow-xl text-white">
       {/* Main Balance */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="text-sm font-medium text-white/80">Solde actuel</p>
-          <p className={`text-3xl font-bold mt-1 ${solde >= 0 ? 'text-white' : 'text-red-300'}`}>
-            {formatCurrency(solde)}
-          </p>
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-          <Wallet className="h-6 w-6 text-white" />
-        </div>
+      <div className="mb-6">
+        <p className="text-sm font-medium text-white/80">Solde actuel</p>
+        <p className={`text-3xl font-bold mt-1 ${solde >= 0 ? 'text-white' : 'text-red-300'}`}>
+          {formatCurrency(solde)}
+        </p>
       </div>
 
       {/* Stats Row */}
       <div className="flex items-center justify-between border-t border-white/20 pt-5">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-400/20">
-              <TrendingDown className="h-3 w-3 text-red-300" />
-            </div>
+            <TrendingDown className="h-4 w-4 text-red-300" />
             <p className="text-xs text-white/80">Dépenses</p>
           </div>
           <p className="text-sm font-semibold text-red-200">{formatCurrency(totalDepenses)}</p>
@@ -45,9 +38,7 @@ export function SummaryCards({ totalDepenses, totalRecettes }: SummaryCardsProps
 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-400/20">
-              <TrendingUp className="h-3 w-3 text-green-300" />
-            </div>
+            <TrendingUp className="h-4 w-4 text-green-300" />
             <p className="text-xs text-white/80">Recettes</p>
           </div>
           <p className="text-sm font-semibold text-green-200">{formatCurrency(totalRecettes)}</p>
