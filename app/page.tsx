@@ -7,6 +7,8 @@ import { ProductionCards } from '@/components/production-cards'
 import { RecetteForm } from '@/components/recette-form'
 import { SummaryCards } from '@/components/summary-cards'
 import { TransactionsList } from '@/components/transactions-list'
+import { AIChat } from '@/components/ai-chat'
+import { WeatherCard } from '@/components/weather-card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { Culture, Depense, Recette } from '@/lib/types'
@@ -307,6 +309,8 @@ export default function FarmManganePage() {
           <div className="flex flex-col gap-6">
             <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} />
 
+            <WeatherCard />
+
             <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
 
             <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('parametres')} />
@@ -440,6 +444,7 @@ export default function FarmManganePage() {
 
         </div>
       </nav>
+      <AIChat cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
     </main>
   )
 }
