@@ -130,12 +130,13 @@ export function DepenseForm({ onSuccess, fullScreen = false, initialData }: Depe
           <select
             value={cultureId}
             onChange={e => setCultureId(e.target.value)}
-            className="w-full bg-transparent text-sm font-medium text-foreground outline-none appearance-none"
+            disabled={cultureId !== 'none' && cultures.find(c => c.id === cultureId)?.statut === 'recolte'}
+            className="w-full bg-transparent text-sm font-medium text-foreground outline-none appearance-none disabled:opacity-50"
           >
             <option value="none">— Aucune (dépense générale) —</option>
-            {cultures.map(c => (
+            {cultures.filter(c => c.statut !== 'recolte' || c.id === cultureId).map(c => (
               <option key={c.id} value={c.id}>
-                🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''}
+                🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''} {c.statut === 'recolte' ? '(Clôturée)' : ''}
               </option>
             ))}
           </select>
@@ -154,11 +155,17 @@ export function DepenseForm({ onSuccess, fullScreen = false, initialData }: Depe
         </div>
 
         {/* Bouton valider */}
+        {cultureId !== 'none' && cultures.find(c => c.id === cultureId)?.statut === 'recolte' && (
+          <div className="p-3 text-sm text-amber-700 bg-amber-50 rounded-xl border border-amber-200">
+            ⚠️ Cette culture est clôturée. Vous ne pouvez pas modifier ou ajouter de dépenses pour celle-ci.
+          </div>
+        )}
+
         {fullScreen ? (
           <div className="fixed bottom-0 left-0 right-0 z-10 bg-background/90 backdrop-blur-md border-t border-border p-4">
             <button
               type="submit"
-              disabled={loading || !montant || !categorie}
+              disabled={loading || !montant || !categorie || (cultureId !== 'none' && cultures.find(c => c.id === cultureId)?.statut === 'recolte')}
               className="w-full h-12 rounded-xl bg-red-500 text-white text-sm font-bold shadow-lg shadow-red-500/20 disabled:opacity-40 disabled:shadow-none active:scale-[0.98] transition-all"
             >
               {loading ? (
@@ -171,7 +178,7 @@ export function DepenseForm({ onSuccess, fullScreen = false, initialData }: Depe
         ) : (
           <button
             type="submit"
-            disabled={loading || !montant || !categorie}
+            disabled={loading || !montant || !categorie || (cultureId !== 'none' && cultures.find(c => c.id === cultureId)?.statut === 'recolte')}
             className="h-11 rounded-xl bg-red-500 text-white font-bold shadow-md shadow-red-500/20 disabled:opacity-40 active:scale-[0.98] transition-all text-sm"
           >
             {loading ? <Spinner className="mx-auto h-4 w-4" /> : (initialData ? 'Enregistrer' : 'Ajouter')}
