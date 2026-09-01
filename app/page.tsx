@@ -41,6 +41,7 @@ type TabType = 'accueil' | 'historique' | 'depense' | 'recette' | 'parametres' |
 export default function FarmManganePage() {
   const [activeTab, setActiveTab] = useState<TabType>('accueil')
   const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [selectedPrintMonth, setSelectedPrintMonth] = useState<string>(new Date().toISOString().substring(0, 7))
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [isUnlocked] = useState(true)
   const [transactionToEdit, setTransactionToEdit] = useState<any>(null)
@@ -70,15 +71,26 @@ export default function FarmManganePage() {
     }
   }
 
-  const totalDepenses = data?.depenses.reduce((sum, d) => sum + d.montant, 0) || 0
-  const totalRecettes = data?.recettes.reduce((sum, r) => sum + r.montant, 0) || 0
+  const activeCulturesIds = data?.cultures.filter(c => c.statut !== 'recolte').map(c => c.id) || []
+  const activeDepenses = data?.depenses.filter(d => !d.culture_id || activeCulturesIds.includes(d.culture_id)) || []
+  const activeRecettes = data?.recettes.filter(r => !r.culture_id || activeCulturesIds.includes(r.culture_id)) || []
 
-  const getMonthlyTransactions = () => {
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const totalDepenses = activeDepenses.reduce((sum, d) => sum + d.montant, 0)
+  const totalRecettes = activeRecettes.reduce((sum, r) => sum + r.montant, 0)
 
-    const monthlyDepenses = data?.depenses.filter(d => new Date(d.created_at) >= startOfMonth) || []
-    const monthlyRecettes = data?.recettes.filter(r => new Date(r.created_at) >= startOfMonth) || []
+  const getMonthlyTransactions = (monthStr: string) => {
+    const [year, month] = monthStr.split('-').map(Number)
+    const startOfMonth = new Date(year, month - 1, 1)
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59)
+
+    const monthlyDepenses = data?.depenses.filter(d => {
+      const date = new Date(d.created_at)
+      return date >= startOfMonth && date <= endOfMonth
+    }) || []
+    const monthlyRecettes = data?.recettes.filter(r => {
+      const date = new Date(r.created_at)
+      return date >= startOfMonth && date <= endOfMonth
+    }) || []
 
     return { monthlyDepenses, monthlyRecettes }
   }
@@ -96,10 +108,15 @@ export default function FarmManganePage() {
   }
 
   const handlePrintPDF = () => {
-    const { monthlyDepenses, monthlyRecettes } = getMonthlyTransactions()
+    const { monthlyDepenses, monthlyRecettes } = getMonthlyTransactions(selectedPrintMonth)
     const totalMonthlyDepenses = monthlyDepenses.reduce((sum, d) => sum + d.montant, 0)
     const totalMonthlyRecettes = monthlyRecettes.reduce((sum, r) => sum + r.montant, 0)
     const solde = totalMonthlyRecettes - totalMonthlyDepenses
+    
+    // Format selected month for display
+    const [year, month] = selectedPrintMonth.split('-')
+    const monthName = new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    const monthCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1)
 
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
@@ -138,7 +155,7 @@ export default function FarmManganePage() {
         <button class="back-btn" onclick="window.close()">&#8592; Retour à l'application</button>
         <div class="header">
           <div class="title">FARM MANGANE</div>
-          <div>Rapport Mensuel</div>
+          <div>Rapport Mensuel - ${monthCapitalized}</div>
         </div>
         <div class="summary">
           <div class="summary-item">
@@ -206,10 +223,16 @@ export default function FarmManganePage() {
               <X className="h-5 w-5" />
             </button>
           </div>
-          <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="mb-6 flex flex-col items-center gap-4">
             <p className="text-center text-sm text-muted-foreground">
-              Voulez-vous imprimer le rapport du mois ?
+              Sélectionnez le mois à imprimer :
             </p>
+            <input 
+              type="month" 
+              value={selectedPrintMonth}
+              onChange={(e) => setSelectedPrintMonth(e.target.value)}
+              className="w-full rounded-xl border border-border bg-transparent p-3 text-center text-foreground outline-none focus:border-[#2d4a2d]"
+            />
           </div>
           <div className="flex gap-3">
             <Button
@@ -313,7 +336,7 @@ export default function FarmManganePage() {
 
             <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
 
-            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('parametres')} />
+            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('parametres')} onUpdate={handleRefresh} />
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -361,7 +384,7 @@ export default function FarmManganePage() {
               </Button>
             </div>
 
-            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('add_culture')} />
+            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('add_culture')} onUpdate={handleRefresh} />
           </div>
         )}
       </div>

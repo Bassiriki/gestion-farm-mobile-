@@ -1,5 +1,8 @@
 'use client'
 
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
 import {
   Dialog,
   DialogContent,
@@ -24,6 +27,7 @@ interface ProductionCardsProps {
   depenses: Depense[]
   recettes: Recette[]
   onNavigateToParametres?: () => void
+  onUpdate?: () => void
 }
 
 export function ProductionCards({
@@ -31,7 +35,9 @@ export function ProductionCards({
   depenses,
   recettes,
   onNavigateToParametres,
+  onUpdate,
 }: ProductionCardsProps) {
+  const [loadingId, setLoadingId] = useState<string | null>(null)
   const enCours = cultures.filter((c) => c.statut === 'en_cours')
   const recoltes = cultures.filter((c) => c.statut === 'recolte')
 
@@ -58,6 +64,20 @@ export function ProductionCards({
       month: '2-digit',
       year: '2-digit',
     })
+  }
+
+  const handleCloturer = async (cultureId: string) => {
+    setLoadingId(cultureId)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('cultures')
+      .update({ statut: 'recolte' })
+      .eq('id', cultureId)
+    
+    if (!error && onUpdate) {
+      onUpdate()
+    }
+    setLoadingId(null)
   }
 
   if (cultures.length === 0) {
@@ -264,6 +284,18 @@ export function ProductionCards({
                   Lors de l'ajout d'une dépense ou recette, sélectionnez «{culture.nom}»
                 </p>
               </div>
+            )}
+
+            {/* Bouton Clôturer */}
+            {variant === 'en_cours' && (
+              <button
+                onClick={() => handleCloturer(culture.id)}
+                disabled={loadingId === culture.id}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-100 p-3 text-sm font-bold text-amber-700 transition-all hover:bg-amber-200 active:scale-95 disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {loadingId === culture.id ? 'Clôture en cours...' : 'Clôturer cette culture'}
+              </button>
             )}
           </div>
         </DialogContent>
