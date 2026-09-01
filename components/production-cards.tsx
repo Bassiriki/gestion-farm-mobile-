@@ -23,7 +23,8 @@ import {
   Users,
   Archive,
   RotateCcw,
-  X
+  X,
+  Lock,
 } from 'lucide-react'
 
 interface ProductionCardsProps {
@@ -83,7 +84,7 @@ export function ProductionCards({
       .from('cultures')
       .update({ statut: 'cloture' })
       .eq('id', cultureId)
-    
+
     if (!error && onUpdate) {
       onUpdate()
     }
@@ -97,9 +98,10 @@ export function ProductionCards({
       .from('cultures')
       .update({ statut: 'en_cours' })
       .eq('id', cultureId)
-    
+
     if (!error && onUpdate) {
       onUpdate()
+      setShowCloturees(false)
     }
     setLoadingId(null)
   }
@@ -130,7 +132,7 @@ export function ProductionCards({
     const totalDeps = cultureDeps.reduce((s, d) => s + d.montant, 0)
     const totalRecs = cultureRecs.reduce((s, r) => s + r.montant, 0)
     const solde = totalRecs - totalDeps
-    
+
     const associatedClients = cultureClients
       .filter(cc => cc.culture_id === culture.id)
       .map(cc => clients.find(c => c.id === cc.client_id))
@@ -182,6 +184,9 @@ export function ProductionCards({
               <div>
                 <p className="text-sm font-bold text-foreground leading-tight">{culture.nom}</p>
                 {culture.variete && <p className="text-xs text-muted-foreground">{culture.variete}</p>}
+              </div>
+              <div className={`text-xs font-semibold mt-1 ${solde >= 0 ? 'text-[#2d4a2d]' : 'text-red-500'}`}>
+                {solde >= 0 ? '+' : ''}{new Intl.NumberFormat('fr-FR').format(solde)} F
               </div>
             </button>
           )}
@@ -331,17 +336,17 @@ export function ProductionCards({
               </div>
             )}
 
-            {/* Bouton Clôturer */}
-            {variant === 'en_cours' && (
+            {/* Bouton Clôturer — dans le modal */}
+            <div className="pt-2 border-t border-border">
               <button
                 onClick={() => handleCloturer(culture.id)}
                 disabled={loadingId === culture.id}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-100 p-3 text-sm font-bold text-amber-700 transition-all hover:bg-amber-200 active:scale-95 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-900/30 p-3 text-sm font-semibold text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-100 dark:hover:bg-gray-800/40 active:scale-95 disabled:opacity-50"
               >
-                <CheckCircle2 className="h-4 w-4" />
+                <Lock className="h-4 w-4" />
                 {loadingId === culture.id ? 'Clôture en cours...' : 'Clôturer cette culture'}
               </button>
-            )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -375,19 +380,29 @@ export function ProductionCards({
         </div>
       )}
 
-      {/* Bouton Clôturées */}
+      {/* Card Clôturées */}
       {cloturees.length > 0 && (
         <button
           onClick={() => setShowCloturees(true)}
-          className="flex items-center justify-between rounded-xl border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-900/30 dark:border-gray-700 p-3 transition-all hover:bg-gray-100 dark:hover:bg-gray-800/40"
+          className="flex items-center justify-between rounded-xl bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800/60 dark:to-gray-900/40 border border-gray-200 dark:border-gray-700 p-4 transition-all hover:from-gray-200 hover:to-gray-100 dark:hover:from-gray-700/60 dark:hover:to-gray-800/40 active:scale-[0.98]"
         >
-          <div className="flex items-center gap-2">
-            <Archive className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Cultures clôturées</span>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
+              <Archive className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Cultures clôturées</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500">
+                {cloturees.length} culture{cloturees.length > 1 ? 's' : ''} archivée{cloturees.length > 1 ? 's' : ''}
+              </p>
+            </div>
           </div>
-          <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-bold text-gray-600 dark:text-gray-300">
-            {cloturees.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-gray-300 dark:bg-gray-600 px-2.5 py-1 text-xs font-bold text-gray-600 dark:text-gray-300">
+              {cloturees.length}
+            </span>
+            <ChevronRight className="h-4 w-4 text-gray-400" />
+          </div>
         </button>
       )}
 
@@ -395,10 +410,16 @@ export function ProductionCards({
       {showCloturees && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl bg-card shadow-xl border border-border overflow-hidden">
+            {/* Header modal */}
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-2">
-                <Archive className="h-5 w-5 text-gray-500" />
-                <h3 className="text-lg font-bold text-foreground">Cultures clôturées</h3>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                  <Archive className="h-4 w-4 text-gray-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Cultures clôturées</h3>
+                  <p className="text-xs text-muted-foreground">{cloturees.length} culture{cloturees.length > 1 ? 's' : ''}</p>
+                </div>
               </div>
               <button
                 onClick={() => setShowCloturees(false)}
@@ -407,6 +428,8 @@ export function ProductionCards({
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            {/* Liste des clôturées */}
             <div className="flex-1 overflow-y-auto p-4">
               <div className="flex flex-col gap-3">
                 {cloturees.map((culture) => {
@@ -417,40 +440,52 @@ export function ProductionCards({
                   const solde = totalRecs - totalDeps
 
                   return (
-                    <div key={culture.id} className="rounded-xl border border-border bg-muted/30 p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-sm font-bold text-foreground">{culture.nom}</p>
-                          {culture.variete && <p className="text-xs text-muted-foreground">{culture.variete}</p>}
+                    <div key={culture.id} className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                      {/* En-tête de la carte */}
+                      <div className="flex items-center justify-between p-4 pb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700">
+                            <Sprout className="h-4 w-4 text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{culture.nom}</p>
+                            {culture.variete && <p className="text-xs text-muted-foreground">{culture.variete}</p>}
+                          </div>
                         </div>
-                        <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
-                          Clôturée
+                        <span className="flex items-center gap-1 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+                          <Lock className="h-2.5 w-2.5" /> Clôturée
                         </span>
                       </div>
-                      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Dépenses</p>
-                          <p className="text-xs font-bold text-red-600">{formatCurrency(totalDeps)}</p>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-3 gap-0 border-t border-border">
+                        <div className="flex flex-col items-center p-3 border-r border-border">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">Dépenses</p>
+                          <p className="text-xs font-bold text-red-600">{new Intl.NumberFormat('fr-FR').format(totalDeps)} F</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Recettes</p>
-                          <p className="text-xs font-bold text-[#2d4a2d]">{formatCurrency(totalRecs)}</p>
+                        <div className="flex flex-col items-center p-3 border-r border-border">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">Recettes</p>
+                          <p className="text-xs font-bold text-[#2d4a2d]">{new Intl.NumberFormat('fr-FR').format(totalRecs)} F</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">Solde</p>
+                        <div className="flex flex-col items-center p-3">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">Solde</p>
                           <p className={`text-xs font-bold ${solde >= 0 ? 'text-[#2d4a2d]' : 'text-red-500'}`}>
-                            {solde >= 0 ? '+' : ''}{formatCurrency(solde)}
+                            {solde >= 0 ? '+' : ''}{new Intl.NumberFormat('fr-FR').format(solde)} F
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleRecuperer(culture.id)}
-                        disabled={loadingId === culture.id}
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2d4a2d]/10 p-2 text-xs font-bold text-[#2d4a2d] transition-all hover:bg-[#2d4a2d]/20 active:scale-95 disabled:opacity-50"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        {loadingId === culture.id ? 'Récupération...' : 'Récupérer cette culture'}
-                      </button>
+
+                      {/* Bouton Récupérer */}
+                      <div className="p-3 pt-2">
+                        <button
+                          onClick={() => handleRecuperer(culture.id)}
+                          disabled={loadingId === culture.id}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2d4a2d]/10 dark:bg-[#2d4a2d]/20 p-2.5 text-xs font-bold text-[#2d4a2d] transition-all hover:bg-[#2d4a2d]/20 dark:hover:bg-[#2d4a2d]/30 active:scale-95 disabled:opacity-50"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {loadingId === culture.id ? 'Restauration...' : 'Restaurer cette culture'}
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
