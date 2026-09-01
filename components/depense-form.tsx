@@ -134,9 +134,9 @@ export function DepenseForm({ onSuccess, fullScreen = false, initialData }: Depe
             className="w-full bg-transparent text-sm font-medium text-foreground outline-none appearance-none disabled:opacity-50"
           >
             <option value="none">— Aucune (dépense générale) —</option>
-            {cultures.filter(c => c.statut !== 'recolte' || c.id === cultureId).map(c => (
+            {cultures.filter(c => (c.statut !== 'recolte' && c.statut !== 'cloture') || c.id === cultureId).map(c => (
               <option key={c.id} value={c.id}>
-                🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''} {c.statut === 'recolte' ? '(Clôturée)' : ''}
+                🌱 {c.nom}{c.variete ? ` (${c.variete})` : ''} {c.statut === 'recolte' || c.statut === 'cloture' ? '(Clôturée)' : ''}
               </option>
             ))}
           </select>

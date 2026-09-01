@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Culture, Depense, Recette } from '@/lib/types'
+import { Culture, Depense, Recette, Client, CultureClient } from '@/lib/types'
 import {
   Calendar,
   CheckCircle2,
@@ -20,12 +20,18 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  Users,
+  Archive,
+  RotateCcw,
+  X
 } from 'lucide-react'
 
 interface ProductionCardsProps {
   cultures: Culture[]
   depenses: Depense[]
   recettes: Recette[]
+  clients?: Client[]
+  cultureClients?: CultureClient[]
   onNavigateToParametres?: () => void
   onUpdate?: () => void
 }
@@ -34,12 +40,16 @@ export function ProductionCards({
   cultures,
   depenses,
   recettes,
+  clients = [],
+  cultureClients = [],
   onNavigateToParametres,
   onUpdate,
 }: ProductionCardsProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [showCloturees, setShowCloturees] = useState(false)
   const enCours = cultures.filter((c) => c.statut === 'en_cours')
   const recoltes = cultures.filter((c) => c.statut === 'recolte')
+  const cloturees = cultures.filter((c) => c.statut === 'cloture')
 
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('fr-FR').format(n) + ' FCFA'
@@ -71,7 +81,21 @@ export function ProductionCards({
     const supabase = createClient()
     const { error } = await supabase
       .from('cultures')
-      .update({ statut: 'recolte' })
+      .update({ statut: 'cloture' })
+      .eq('id', cultureId)
+    
+    if (!error && onUpdate) {
+      onUpdate()
+    }
+    setLoadingId(null)
+  }
+
+  const handleRecuperer = async (cultureId: string) => {
+    setLoadingId(cultureId)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('cultures')
+      .update({ statut: 'en_cours' })
       .eq('id', cultureId)
     
     if (!error && onUpdate) {
@@ -106,6 +130,11 @@ export function ProductionCards({
     const totalDeps = cultureDeps.reduce((s, d) => s + d.montant, 0)
     const totalRecs = cultureRecs.reduce((s, r) => s + r.montant, 0)
     const solde = totalRecs - totalDeps
+    
+    const associatedClients = cultureClients
+      .filter(cc => cc.culture_id === culture.id)
+      .map(cc => clients.find(c => c.id === cc.client_id))
+      .filter((c): c is Client => c !== undefined)
 
     return (
       <Dialog>
@@ -228,6 +257,22 @@ export function ProductionCards({
               </div>
             )}
 
+            {/* Clients associés */}
+            {associatedClients.length > 0 && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Clients associés ({associatedClients.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {associatedClients.map(client => (
+                    <span key={client.id} className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-100">
+                      {client.nom}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Liste des dépenses liées */}
             {cultureDeps.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -327,6 +372,91 @@ export function ProductionCards({
           {recoltes.map((culture) => (
             <CultureCard key={culture.id} culture={culture} variant="recolte" />
           ))}
+        </div>
+      )}
+
+      {/* Bouton Clôturées */}
+      {cloturees.length > 0 && (
+        <button
+          onClick={() => setShowCloturees(true)}
+          className="flex items-center justify-between rounded-xl border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-900/30 dark:border-gray-700 p-3 transition-all hover:bg-gray-100 dark:hover:bg-gray-800/40"
+        >
+          <div className="flex items-center gap-2">
+            <Archive className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Cultures clôturées</span>
+          </div>
+          <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-bold text-gray-600 dark:text-gray-300">
+            {cloturees.length}
+          </span>
+        </button>
+      )}
+
+      {/* Modal Clôturées */}
+      {showCloturees && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl bg-card shadow-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-gray-500" />
+                <h3 className="text-lg font-bold text-foreground">Cultures clôturées</h3>
+              </div>
+              <button
+                onClick={() => setShowCloturees(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex flex-col gap-3">
+                {cloturees.map((culture) => {
+                  const cultureDeps = depenses.filter((d) => d.culture_id === culture.id)
+                  const cultureRecs = recettes.filter((r) => r.culture_id === culture.id)
+                  const totalDeps = cultureDeps.reduce((s, d) => s + d.montant, 0)
+                  const totalRecs = cultureRecs.reduce((s, r) => s + r.montant, 0)
+                  const solde = totalRecs - totalDeps
+
+                  return (
+                    <div key={culture.id} className="rounded-xl border border-border bg-muted/30 p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{culture.nom}</p>
+                          {culture.variete && <p className="text-xs text-muted-foreground">{culture.variete}</p>}
+                        </div>
+                        <span className="rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+                          Clôturée
+                        </span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Dépenses</p>
+                          <p className="text-xs font-bold text-red-600">{formatCurrency(totalDeps)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Recettes</p>
+                          <p className="text-xs font-bold text-[#2d4a2d]">{formatCurrency(totalRecs)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Solde</p>
+                          <p className={`text-xs font-bold ${solde >= 0 ? 'text-[#2d4a2d]' : 'text-red-500'}`}>
+                            {solde >= 0 ? '+' : ''}{formatCurrency(solde)}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRecuperer(culture.id)}
+                        disabled={loadingId === culture.id}
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2d4a2d]/10 p-2 text-xs font-bold text-[#2d4a2d] transition-all hover:bg-[#2d4a2d]/20 active:scale-95 disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        {loadingId === culture.id ? 'Récupération...' : 'Récupérer cette culture'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

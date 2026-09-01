@@ -7,11 +7,12 @@ import { ProductionCards } from '@/components/production-cards'
 import { RecetteForm } from '@/components/recette-form'
 import { SummaryCards } from '@/components/summary-cards'
 import { TransactionsList } from '@/components/transactions-list'
+import { ClientsList } from '@/components/clients-list'
 import { AIChat } from '@/components/ai-chat'
 import { WeatherCard } from '@/components/weather-card'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { Culture, Depense, Recette } from '@/lib/types'
+import { Culture, Depense, Recette, Client, CultureClient } from '@/lib/types'
 import { Activity, ArrowLeft, Home, LayoutGrid, Moon, Plus, Printer, Sun, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import Image from 'next/image'
@@ -21,16 +22,20 @@ import useSWR from 'swr'
 async function fetchData() {
   const supabase = createClient()
 
-  const [depensesRes, recettesRes, culturesRes] = await Promise.all([
+  const [depensesRes, recettesRes, culturesRes, clientsRes, cultureClientsRes] = await Promise.all([
     supabase.from('depenses').select('*').order('created_at', { ascending: false }),
     supabase.from('recettes').select('*').order('created_at', { ascending: false }),
-    supabase.from('cultures').select('*').order('created_at', { ascending: false })
+    supabase.from('cultures').select('*').order('created_at', { ascending: false }),
+    supabase.from('clients').select('*'),
+    supabase.from('culture_clients').select('*')
   ])
 
   return {
     depenses: (depensesRes.data || []) as Depense[],
     recettes: (recettesRes.data || []) as Recette[],
-    cultures: (culturesRes.data || []) as Culture[]
+    cultures: (culturesRes.data || []) as Culture[],
+    clients: (clientsRes.data || []) as Client[],
+    cultureClients: (cultureClientsRes.data || []) as CultureClient[]
   }
 }
 
@@ -47,7 +52,7 @@ export default function FarmManganePage() {
   const [transactionToEdit, setTransactionToEdit] = useState<any>(null)
   const { theme, setTheme } = useTheme()
   const { data, mutate } = useSWR('farm-data', fetchData, {
-    fallbackData: { depenses: [], recettes: [], cultures: [] }
+    fallbackData: { depenses: [], recettes: [], cultures: [], clients: [], cultureClients: [] }
   })
 
   const handleRefresh = useCallback(() => {
@@ -71,7 +76,7 @@ export default function FarmManganePage() {
     }
   }
 
-  const activeCulturesIds = data?.cultures.filter(c => c.statut !== 'recolte').map(c => c.id) || []
+  const activeCulturesIds = data?.cultures.filter(c => c.statut === 'en_cours').map(c => c.id) || []
   const activeDepenses = data?.depenses.filter(d => !d.culture_id || activeCulturesIds.includes(d.culture_id)) || []
   const activeRecettes = data?.recettes.filter(r => !r.culture_id || activeCulturesIds.includes(r.culture_id)) || []
 
@@ -336,7 +341,15 @@ export default function FarmManganePage() {
 
             <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
 
-            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('parametres')} onUpdate={handleRefresh} />
+            <ProductionCards 
+              cultures={data?.cultures || []} 
+              depenses={data?.depenses || []} 
+              recettes={data?.recettes || []} 
+              clients={data?.clients || []}
+              cultureClients={data?.cultureClients || []}
+              onNavigateToParametres={() => setActiveTab('parametres')} 
+              onUpdate={handleRefresh} 
+            />
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -372,19 +385,33 @@ export default function FarmManganePage() {
         )}
 
         {activeTab === 'parametres' && (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">Paramètres Cultures</h2>
-              <Button
-                onClick={() => setActiveTab('add_culture')}
-                className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
-                size="sm"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Nouvelle
-              </Button>
+          <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-foreground">Paramètres Cultures</h2>
+                <Button
+                  onClick={() => setActiveTab('add_culture')}
+                  className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
+                  size="sm"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Nouvelle
+                </Button>
+              </div>
+
+              <ProductionCards 
+                cultures={data?.cultures || []} 
+                depenses={data?.depenses || []} 
+                recettes={data?.recettes || []} 
+                clients={data?.clients || []}
+                cultureClients={data?.cultureClients || []}
+                onNavigateToParametres={() => setActiveTab('add_culture')} 
+                onUpdate={handleRefresh} 
+              />
             </div>
 
-            <ProductionCards cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} onNavigateToParametres={() => setActiveTab('add_culture')} onUpdate={handleRefresh} />
+            <hr className="border-border" />
+
+            <ClientsList />
           </div>
         )}
       </div>

@@ -24,8 +24,21 @@ export interface Culture {
   surface: string | null
   date_plantation: string | null
   date_recolte_prevue: string | null
-  statut: 'en_cours' | 'recolte'
+  statut: 'en_cours' | 'recolte' | 'cloture'
   notes: string | null
+  created_at: string
+}
+
+export interface Client {
+  id: string
+  nom: string
+  telephone: string | null
+  created_at: string
+}
+
+export interface CultureClient {
+  culture_id: string
+  client_id: string
   created_at: string
 }
 

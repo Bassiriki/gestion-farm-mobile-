@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Sprout, Check } from 'lucide-react'
+import { Sprout, Check, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useEffect } from 'react'
+import { Client } from '@/lib/types'
 
 interface CultureFormProps {
   onSuccess: () => void
@@ -19,8 +21,27 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
   const [datePlantation, setDatePlantation] = useState('')
   const [dateRecoltePrevue, setDateRecoltePrevue] = useState('')
   const [statut, setStatut] = useState<'en_cours' | 'recolte'>('en_cours')
+  const [clients, setClients] = useState<Client[]>([])
+  const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const supabase = createClient()
+      const { data } = await supabase.from('clients').select('*').order('nom')
+      if (data) setClients(data)
+    }
+    fetchClients()
+  }, [])
+
+  const toggleClient = (id: string) => {
+    if (selectedClients.includes(id)) {
+      setSelectedClients(selectedClients.filter(cId => cId !== id))
+    } else {
+      setSelectedClients([...selectedClients, id])
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,7 +59,24 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
       date_recolte_prevue: dateRecoltePrevue || null,
       statut,
       notes: null,
-    })
+    }).select().single()
+
+    if (supabaseError) {
+      setLoading(false)
+      setError('Erreur lors de l\'enregistrement de la culture. Réessayez.')
+      return
+    }
+
+    if (cultureData && selectedClients.length > 0) {
+      const cultureClients = selectedClients.map(clientId => ({
+        culture_id: cultureData.id,
+        client_id: clientId
+      }))
+      const { error: relationError } = await supabase.from('culture_clients').insert(cultureClients)
+      if (relationError) {
+        console.error('Error inserting clients', relationError)
+      }
+    }
 
     setLoading(false)
 
@@ -147,6 +185,27 @@ export function CultureForm({ onSuccess, onCancel }: CultureFormProps) {
             </button>
           </div>
         </div>
+
+        {clients.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <Label className="text-base font-medium text-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" /> Clients associés (optionnel)
+            </Label>
+            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto rounded-xl border border-border p-2 bg-gray-50">
+              {clients.map(client => (
+                <label key={client.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedClients.includes(client.id)}
+                    onChange={() => toggleClient(client.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-[#2d4a2d] focus:ring-[#2d4a2d]"
+                  />
+                  <span className="text-sm font-medium">{client.nom}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-auto flex gap-3 pt-6">
           <Button
