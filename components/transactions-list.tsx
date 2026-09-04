@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo } from 'react'
 interface TransactionsListProps {
   depenses: Depense[]
   recettes: Recette[]
+  cultures?: Culture[]
   onDelete: () => void
   onEdit?: (transaction: any) => void
   compact?: boolean
@@ -16,17 +17,9 @@ interface TransactionsListProps {
 
 type Transaction = (Depense & { type: 'depense' }) | (Recette & { type: 'recette' })
 
-export function TransactionsList({ depenses, recettes, onDelete, onEdit, compact }: TransactionsListProps) {
+export function TransactionsList({ depenses, recettes, cultures = [], onDelete, onEdit, compact }: TransactionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [cultures, setCultures] = useState<Culture[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.from('cultures').select('*').then(({ data }) => {
-      if (data) setCultures(data)
-    })
-  }, [])
 
   const getCultureName = (cultureId: string | null) => {
     if (!cultureId) return null

@@ -10,6 +10,10 @@ import { TransactionsList } from '@/components/transactions-list'
 import { ClientsList } from '@/components/clients-list'
 import { AIChat } from '@/components/ai-chat'
 import { WeatherCard } from '@/components/weather-card'
+import { DesktopSidebar } from '@/components/desktop-sidebar'
+import { DesktopTopbar } from '@/components/desktop-topbar'
+import { MonthlyChart } from '@/components/monthly-chart'
+import { DesktopRightPanel } from '@/components/desktop-right-panel'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { Culture, Depense, Recette, Client, CultureClient } from '@/lib/types'
@@ -82,6 +86,7 @@ export default function FarmManganePage() {
 
   const totalDepenses = activeDepenses.reduce((sum, d) => sum + d.montant, 0)
   const totalRecettes = activeRecettes.reduce((sum, r) => sum + r.montant, 0)
+  const nbCulturesActives = data?.cultures.filter(c => c.statut === 'en_cours').length || 0
 
   const getMonthlyTransactions = (monthStr: string) => {
     const [year, month] = monthStr.split('-').map(Number)
@@ -202,7 +207,7 @@ export default function FarmManganePage() {
 
 
   const FormHeader = ({ title, onBack }: { title: string; onBack: () => void }) => (
-    <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm">
+    <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm lg:hidden">
       <div className="mx-auto flex max-w-lg items-center gap-3">
         <button
           onClick={onBack}
@@ -260,241 +265,446 @@ export default function FarmManganePage() {
     )
   }
 
+  // ── Form pages (mobile & desktop) ─────────────────────────────────────────
   if (activeTab === 'depense') {
     return (
-      <main className="flex min-h-screen flex-col bg-background">
-        <FormHeader title="Ajouter Dépense" onBack={() => { setActiveTab('accueil'); setTransactionToEdit(null); }} />
-        <div className="mx-auto w-full max-w-lg flex-1 px-4 py-6">
-          <DepenseForm onSuccess={handleSuccess} fullScreen initialData={transactionToEdit} />
+      <div className="flex min-h-screen bg-background">
+        {/* Desktop sidebar */}
+        <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} onPrint={() => setShowPrintDialog(true)} />
+        <div className="flex flex-col flex-1 lg:ml-[240px]">
+          <DesktopTopbar activeTab={activeTab} onPrint={() => setShowPrintDialog(true)} onAddRecette={() => setActiveTab('recette')} onAddDepense={() => setActiveTab('depense')} />
+          {showPrintDialog && <PrintDialog />}
+          <FormHeader title="Ajouter Dépense" onBack={() => { setActiveTab('accueil'); setTransactionToEdit(null); }} />
+          <div className="mx-auto w-full max-w-lg flex-1 px-4 py-6">
+            <DepenseForm onSuccess={handleSuccess} fullScreen initialData={transactionToEdit} />
+          </div>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (activeTab === 'recette') {
     return (
-      <main className="flex min-h-screen flex-col bg-background">
-        <FormHeader title="Ajouter Recette" onBack={() => { setActiveTab('accueil'); setTransactionToEdit(null); }} />
-        <div className="mx-auto w-full max-w-lg flex-1 px-4 py-6">
-          <RecetteForm onSuccess={handleSuccess} fullScreen initialData={transactionToEdit} />
+      <div className="flex min-h-screen bg-background">
+        <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} onPrint={() => setShowPrintDialog(true)} />
+        <div className="flex flex-col flex-1 lg:ml-[240px]">
+          <DesktopTopbar activeTab={activeTab} onPrint={() => setShowPrintDialog(true)} onAddRecette={() => setActiveTab('recette')} onAddDepense={() => setActiveTab('depense')} />
+          {showPrintDialog && <PrintDialog />}
+          <FormHeader title="Ajouter Recette" onBack={() => { setActiveTab('accueil'); setTransactionToEdit(null); }} />
+          <div className="mx-auto w-full max-w-lg flex-1 px-4 py-6">
+            <RecetteForm onSuccess={handleSuccess} fullScreen initialData={transactionToEdit} />
+          </div>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (activeTab === 'add_culture') {
     return (
-      <main className="flex min-h-screen flex-col bg-background">
-        <FormHeader title="Ajouter Culture" onBack={() => setActiveTab('parametres')} />
-        <div className="mx-auto w-full max-w-lg flex-1">
-          <CultureForm onSuccess={() => { mutate(); setActiveTab('parametres'); }} onCancel={() => setActiveTab('parametres')} />
+      <div className="flex min-h-screen bg-background">
+        <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} onPrint={() => setShowPrintDialog(true)} />
+        <div className="flex flex-col flex-1 lg:ml-[240px]">
+          <DesktopTopbar activeTab={activeTab} onPrint={() => setShowPrintDialog(true)} onAddRecette={() => setActiveTab('recette')} onAddDepense={() => setActiveTab('depense')} />
+          {showPrintDialog && <PrintDialog />}
+          <FormHeader title="Ajouter Culture" onBack={() => setActiveTab('parametres')} />
+          <div className="mx-auto w-full max-w-lg flex-1">
+            <CultureForm onSuccess={() => { mutate(); setActiveTab('parametres'); }} onCancel={() => setActiveTab('parametres')} />
+          </div>
         </div>
-      </main>
+      </div>
     )
   }
 
+  // ── Main dashboard ─────────────────────────────────────────────────────────
   return (
-    <main className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen bg-background">
       {showPrintDialog && <PrintDialog />}
 
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm">
-        <div className="mx-auto flex max-w-lg items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/images/logo.png"
-              alt="Farm Mangane Logo"
-              width={56}
-              height={56}
-              className="rounded-xl object-cover"
-            />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Farm Mangane</h1>
-              <p className="text-sm text-muted-foreground">Gestion Agricole</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <Sun className="h-5 w-5 hidden dark:block" />
-              <Moon className="h-5 w-5 block dark:hidden" />
-            </button>
-            <button
-              onClick={() => setShowPrintDialog(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <Printer className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Desktop Sidebar */}
+      <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} onPrint={() => setShowPrintDialog(true)} />
 
-      {/* Main Content */}
-      <div className="mx-auto w-full max-w-lg flex-1 px-4 pb-28 pt-4">
-        {activeTab === 'accueil' && (
-          <div className="flex flex-col gap-6">
-            <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} />
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 lg:ml-[240px] min-h-screen">
 
-            <WeatherCard />
+        {/* Desktop Topbar */}
+        <DesktopTopbar
+          activeTab={activeTab}
+          onPrint={() => setShowPrintDialog(true)}
+          onAddRecette={() => setActiveTab('recette')}
+          onAddDepense={() => setActiveTab('depense')}
+        />
 
-            <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
-
-            <ProductionCards 
-              cultures={data?.cultures || []} 
-              depenses={data?.depenses || []} 
-              recettes={data?.recettes || []} 
-              clients={data?.clients || []}
-              cultureClients={data?.cultureClients || []}
-              onNavigateToParametres={() => setActiveTab('parametres')} 
-              onUpdate={handleRefresh} 
-            />
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground">Transactions récentes</h2>
-                <button
-                  onClick={() => setActiveTab('historique')}
-                  className="text-sm font-medium text-[#2d4a2d] dark:text-[#4ade80]"
-                >
-                  Voir tout
-                </button>
-              </div>
-              <TransactionsList
-                depenses={data?.depenses.slice(0, 3) || []}
-                recettes={data?.recettes.slice(0, 3) || []}
-                onDelete={handleRefresh}
-                onEdit={handleEditTransaction}
-                compact
+        {/* Mobile Header */}
+        <header className="lg:hidden sticky top-0 z-10 border-b border-border bg-card px-4 py-5 shadow-sm">
+          <div className="mx-auto flex max-w-lg items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/logo.png"
+                alt="Farm Mangane Logo"
+                width={56}
+                height={56}
+                className="rounded-xl object-cover"
               />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Farm Mangane</h1>
+                <p className="text-sm text-muted-foreground">Gestion Agricole</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <Sun className="h-5 w-5 hidden dark:block" />
+                <Moon className="h-5 w-5 block dark:hidden" />
+              </button>
+              <button
+                onClick={() => setShowPrintDialog(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <Printer className="h-5 w-5" />
+              </button>
             </div>
           </div>
-        )}
+        </header>
 
-        {activeTab === 'historique' && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold text-foreground">Historique complet</h2>
-            <TransactionsList
-              depenses={data?.depenses || []}
-              recettes={data?.recettes || []}
-              onDelete={handleRefresh}
-              onEdit={handleEditTransaction}
-            />
-          </div>
-        )}
-
-        {activeTab === 'parametres' && (
-          <div className="flex flex-col gap-8">
+        {/* ── MOBILE content ───────────────────────────────────────────── */}
+        <div className="lg:hidden mx-auto w-full max-w-lg flex-1 px-4 pb-28 pt-4">
+          {activeTab === 'accueil' && (
             <div className="flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-foreground">Paramètres Cultures</h2>
-                <Button
-                  onClick={() => setActiveTab('add_culture')}
-                  className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
-                  size="sm"
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Nouvelle
-                </Button>
-              </div>
-
+              <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} nbCulturesActives={nbCulturesActives} />
+              <WeatherCard />
+              <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
               <ProductionCards 
                 cultures={data?.cultures || []} 
                 depenses={data?.depenses || []} 
                 recettes={data?.recettes || []} 
                 clients={data?.clients || []}
                 cultureClients={data?.cultureClients || []}
-                onNavigateToParametres={() => setActiveTab('add_culture')} 
+                onNavigateToParametres={() => setActiveTab('parametres')} 
                 onUpdate={handleRefresh} 
               />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-medium text-muted-foreground">Transactions récentes</h2>
+                  <button
+                    onClick={() => setActiveTab('historique')}
+                    className="text-sm font-medium text-[#2d4a2d] dark:text-[#4ade80]"
+                  >
+                    Voir tout
+                  </button>
+                </div>
+                <TransactionsList
+                  depenses={data?.depenses.slice(0, 3) || []}
+                  recettes={data?.recettes.slice(0, 3) || []}
+                  cultures={data?.cultures || []}
+                  onDelete={handleRefresh}
+                  onEdit={handleEditTransaction}
+                  compact
+                />
+              </div>
             </div>
+          )}
 
-            <hr className="border-border" />
+          {activeTab === 'historique' && (
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-bold text-foreground">Historique complet</h2>
+              <TransactionsList
+                depenses={data?.depenses || []}
+                recettes={data?.recettes || []}
+                cultures={data?.cultures || []}
+                onDelete={handleRefresh}
+                onEdit={handleEditTransaction}
+              />
+            </div>
+          )}
 
-            <ClientsList />
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-card border-t border-border">
-        {/* Floating Add Menu */}
-        {showAddMenu && (
-          <div className="absolute bottom-20 left-1/2 flex -translate-x-1/2 flex-col gap-3 rounded-2xl bg-card p-3 shadow-xl border border-border">
-            <button
-              onClick={() => { setActiveTab('recette'); setShowAddMenu(false); }}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2d4a2d]/10 dark:bg-[#2d4a2d]/20">
-                <TrendingUp className="h-5 w-5 text-[#2d4a2d]" />
+          {activeTab === 'parametres' && (
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-foreground">Paramètres Cultures</h2>
+                  <Button
+                    onClick={() => setActiveTab('add_culture')}
+                    className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
+                    size="sm"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Nouvelle
+                  </Button>
+                </div>
+                <ProductionCards 
+                  cultures={data?.cultures || []} 
+                  depenses={data?.depenses || []} 
+                  recettes={data?.recettes || []} 
+                  clients={data?.clients || []}
+                  cultureClients={data?.cultureClients || []}
+                  onNavigateToParametres={() => setActiveTab('add_culture')} 
+                  onUpdate={handleRefresh} 
+                />
               </div>
-              <span className="text-sm font-medium text-foreground">Ajouter Recette</span>
-            </button>
-            <button
-              onClick={() => { setActiveTab('depense'); setShowAddMenu(false); }}
-              className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/50">
-                <TrendingDown className="h-5 w-5 text-red-500" />
-              </div>
-              <span className="text-sm font-medium text-foreground">Ajouter Dépense</span>
-            </button>
-          </div>
-        )}
-
-        {/* Dim overlay when add menu is open */}
-        {showAddMenu && (
-          <div
-            className="fixed inset-0 -z-10 bg-black/5 dark:bg-black/50"
-            onClick={() => setShowAddMenu(false)}
-          />
-        )}
-
-        <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
-
-          <button
-            onClick={() => { setActiveTab('accueil'); setShowAddMenu(false); }}
-            className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'accueil' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
-          >
-            <Home className="h-[22px] w-[22px]" />
-            <span className="text-[10px] font-medium">Accueil</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('historique'); setShowAddMenu(false); }}
-            className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'historique' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
-          >
-            <Activity className="h-[22px] w-[22px]" />
-            <span className="text-[10px] font-medium">Historique</span>
-          </button>
-
-          <button
-            onClick={() => setShowAddMenu(!showAddMenu)}
-            className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${showAddMenu ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
-          >
-            <Plus className="h-7 w-7 rounded-full border-[1.5px] border-current p-0.5" />
-            <span className="text-[10px] font-medium">Ajouter</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('parametres'); setShowAddMenu(false); }}
-            className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'parametres' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
-          >
-            <LayoutGrid className="h-[22px] w-[22px]" />
-            <span className="text-[10px] font-medium">Cultures</span>
-          </button>
-
-          <button
-            onClick={() => { setShowPrintDialog(true); setShowAddMenu(false); }}
-            className="flex flex-col items-center justify-center gap-1 w-16 transition-colors text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80"
-          >
-            <Printer className="h-[22px] w-[22px]" />
-            <span className="text-[10px] font-medium">Rapport</span>
-          </button>
-
+              <hr className="border-border" />
+              <ClientsList />
+            </div>
+          )}
         </div>
-      </nav>
-      <AIChat cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
-    </main>
+
+        {/* ── DESKTOP content ──────────────────────────────────────────── */}
+        <div className="hidden lg:block flex-1 overflow-auto">
+          <div className="p-6">
+
+            {/* Accueil tab */}
+            {activeTab === 'accueil' && (
+              <div className="flex flex-col gap-5">
+                {/* Row 1: 4 KPI cards */}
+                <SummaryCards totalDepenses={totalDepenses} totalRecettes={totalRecettes} nbCulturesActives={nbCulturesActives} />
+
+                {/* Row 2: Chart (2/3) + Right panel (1/3) */}
+                <div className="grid grid-cols-3 gap-5">
+                  <div className="col-span-2">
+                    <MonthlyChart depenses={data?.depenses || []} recettes={data?.recettes || []} />
+                  </div>
+                  <div className="col-span-1">
+                    <DesktopRightPanel
+                      cultures={data?.cultures || []}
+                      depenses={data?.depenses || []}
+                      recettes={data?.recettes || []}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Transactions (2/3) + Météo + CultureStats (1/3) */}
+                <div className="grid grid-cols-3 gap-5">
+                  <div className="col-span-2 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-bold text-foreground">Transactions récentes</h2>
+                      <button
+                        onClick={() => setActiveTab('historique')}
+                        className="text-xs font-semibold text-[#2d4a2d] dark:text-[#4ade80] hover:underline"
+                      >
+                        Voir tout →
+                      </button>
+                    </div>
+                    {/* Desktop transaction table */}
+                    <div className="rounded-2xl bg-card border border-border card-shadow overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/50">
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Type</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Description</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Culture</th>
+                            <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                            <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Montant</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            ...((data?.depenses || []).slice(0, 5).map(d => ({ ...d, type: 'depense' as const }))),
+                            ...((data?.recettes || []).slice(0, 5).map(r => ({ ...r, type: 'recette' as const })))
+                          ]
+                            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                            .slice(0, 8)
+                            .map((t, i) => {
+                              const isDepense = t.type === 'depense'
+                              const culture = data?.cultures.find(c => c.id === t.culture_id)
+                              return (
+                                <tr key={t.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                                  <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${isDepense ? 'bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'}`}>
+                                      {isDepense ? '↓ Dépense' : '↑ Recette'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-foreground font-medium max-w-[180px] truncate">
+                                    {t.description || (isDepense && 'categorie' in t ? t.categorie : '—')}
+                                  </td>
+                                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                                    {culture ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f4e8] dark:bg-[#2d4a2d]/20 px-2 py-0.5 text-[10px] font-medium text-[#2d4a2d] dark:text-green-400">
+                                        🌱 {culture.nom}
+                                      </span>
+                                    ) : '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                                    {new Date(t.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                                  </td>
+                                  <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${isDepense ? 'text-red-500' : 'text-[#2d4a2d] dark:text-green-400'}`}>
+                                    {isDepense ? '-' : '+'}{new Intl.NumberFormat('fr-FR').format(t.montant)} F
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          {(data?.depenses.length === 0 && data?.recettes.length === 0) && (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                                Aucune transaction enregistrée
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right: Météo + CultureStats */}
+                  <div className="col-span-1 flex flex-col gap-4">
+                    <WeatherCard />
+                    <CultureStats cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Historique tab */}
+            {activeTab === 'historique' && (
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">Historique des Transactions</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{(data?.depenses.length || 0) + (data?.recettes.length || 0)} transactions au total</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('recette')}
+                      className="flex items-center gap-1.5 rounded-xl bg-[#2d4a2d] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#3d6a3d] transition-colors"
+                    >
+                      <TrendingUp className="h-4 w-4" /> Recette
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('depense')}
+                      className="flex items-center gap-1.5 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
+                    >
+                      <TrendingDown className="h-4 w-4" /> Dépense
+                    </button>
+                  </div>
+                </div>
+                <TransactionsList
+                  depenses={data?.depenses || []}
+                  recettes={data?.recettes || []}
+                  cultures={data?.cultures || []}
+                  onDelete={handleRefresh}
+                  onEdit={handleEditTransaction}
+                />
+              </div>
+            )}
+
+            {/* Cultures / Paramètres tab */}
+            {activeTab === 'parametres' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">Gestion des Cultures</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{data?.cultures.length || 0} cultures enregistrées</p>
+                  </div>
+                  <Button
+                    onClick={() => setActiveTab('add_culture')}
+                    className="rounded-xl bg-[#2d4a2d] text-white hover:bg-[#3d5a3d]"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Nouvelle Culture
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-5">
+                  <div className="col-span-2">
+                    <ProductionCards 
+                      cultures={data?.cultures || []} 
+                      depenses={data?.depenses || []} 
+                      recettes={data?.recettes || []} 
+                      clients={data?.clients || []}
+                      cultureClients={data?.cultureClients || []}
+                      onNavigateToParametres={() => setActiveTab('add_culture')} 
+                      onUpdate={handleRefresh} 
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <ClientsList />
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* ── Mobile Bottom Navigation ──────────────────────────────────── */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-card border-t border-border">
+          {/* Floating Add Menu */}
+          {showAddMenu && (
+            <div className="absolute bottom-20 left-1/2 flex -translate-x-1/2 flex-col gap-3 rounded-2xl bg-card p-3 shadow-xl border border-border">
+              <button
+                onClick={() => { setActiveTab('recette'); setShowAddMenu(false); }}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2d4a2d]/10 dark:bg-[#2d4a2d]/20">
+                  <TrendingUp className="h-5 w-5 text-[#2d4a2d]" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Ajouter Recette</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('depense'); setShowAddMenu(false); }}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/50">
+                  <TrendingDown className="h-5 w-5 text-red-500" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Ajouter Dépense</span>
+              </button>
+            </div>
+          )}
+
+          {/* Dim overlay when add menu is open */}
+          {showAddMenu && (
+            <div
+              className="fixed inset-0 -z-10 bg-black/5 dark:bg-black/50"
+              onClick={() => setShowAddMenu(false)}
+            />
+          )}
+
+          <div className="mx-auto flex h-16 max-w-lg items-center justify-between px-4">
+
+            <button
+              onClick={() => { setActiveTab('accueil'); setShowAddMenu(false); }}
+              className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'accueil' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
+            >
+              <Home className="h-[22px] w-[22px]" />
+              <span className="text-[10px] font-medium">Accueil</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('historique'); setShowAddMenu(false); }}
+              className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'historique' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
+            >
+              <Activity className="h-[22px] w-[22px]" />
+              <span className="text-[10px] font-medium">Historique</span>
+            </button>
+
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${showAddMenu ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
+            >
+              <Plus className="h-7 w-7 rounded-full border-[1.5px] border-current p-0.5" />
+              <span className="text-[10px] font-medium">Ajouter</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('parametres'); setShowAddMenu(false); }}
+              className={`flex flex-col items-center justify-center gap-1 w-16 transition-colors ${activeTab === 'parametres' ? 'text-[#2d4a2d] dark:text-[#4ade80]' : 'text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80'}`}
+            >
+              <LayoutGrid className="h-[22px] w-[22px]" />
+              <span className="text-[10px] font-medium">Cultures</span>
+            </button>
+
+            <button
+              onClick={() => { setShowPrintDialog(true); setShowAddMenu(false); }}
+              className="flex flex-col items-center justify-center gap-1 w-16 transition-colors text-slate-400 hover:text-slate-600 dark:text-white/50 dark:hover:text-white/80"
+            >
+              <Printer className="h-[22px] w-[22px]" />
+              <span className="text-[10px] font-medium">Rapport</span>
+            </button>
+
+          </div>
+        </nav>
+
+        <AIChat cultures={data?.cultures || []} depenses={data?.depenses || []} recettes={data?.recettes || []} />
+      </div>
+    </div>
   )
 }
